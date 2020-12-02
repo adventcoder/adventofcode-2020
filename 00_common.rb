@@ -2,7 +2,12 @@
 require 'fileutils'
 require 'net/http'
 
-$session = '53616c7465645f5f94f67249ed8c1e08e108122e681df69d04ea3d25508f69905766331a36e522358d4045256b258a51'
+begin
+  $session = File.read('session.txt')
+rescue Errno::ENOENT
+  puts "Helpful message here"
+  exit false
+end
 
 def get_input(day)
   path = "inputs/#{$session}/#{day}.txt"
