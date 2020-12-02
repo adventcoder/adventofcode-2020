@@ -5,15 +5,18 @@ report = []
 get_input(1).each_line do |line|
   report << line.chomp.to_i
 end
+report.sort!
 
-report.combination(2) do |a, b|
-  if a + b == 2020
-    puts a * b
+for i in 0 ... (report.size - 1)
+  if j = report.find_index(2020 - report[i], i + 1)
+    puts report[i] * report[j]
   end
 end
 
-report.combination(3) do |a, b, c|
-  if a + b + c == 2020
-    puts a * b * c
+for i in 0 ... (report.size - 2)
+  for j in (i + 1) ... (report.size - 1)
+    if k = report.find_index(2020 - report[i] - report[j], j + 1)
+      puts report[i] * report[j] * report[k]
+    end
   end
 end
