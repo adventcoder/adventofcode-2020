@@ -19,7 +19,7 @@ def get_input(day)
       FileUtils.mkdir_p(File.dirname(path))
       File.write(path, input)
     rescue => error
-      warn("unable to cache remote file: #{error.message}")
+      warn("unable to save local copy of input: #{error.message}")
     end
     input
   end
