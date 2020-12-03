@@ -2,6 +2,8 @@
 require 'fileutils'
 require 'net/http'
 
+require_relative 'utils.rb'
+
 begin
   $session = File.read('session.txt')
 rescue Errno::ENOENT
@@ -39,22 +41,5 @@ def fetch_input(day)
     response.body
   else
     response.error!
-  end
-end
-
-class Array
-  def find_index(x, lo = 0, hi = size)
-    while hi - lo > 1
-      i = lo + (hi - lo) / 2
-      if self[i] < x
-        lo = i + 1
-      elsif self[i] > x
-        hi = i
-      else
-        return j
-      end
-    end
-    return lo if hi > lo && self[lo] == x
-    nil
   end
 end
