@@ -1,18 +1,18 @@
 require_relative '00_common.rb'
 
-$map = get_input(3).lines.map(&:chomp)
+$lines = get_input(3).lines.map(&:chomp)
 
-def trees(dx, dy)
+def tree_count(dx, dy)
   x = 0
   y = 0
   count = 0
-  while y < $map.size
-    count += 1 if $map[y][x] == '#'
-    x = (x + dx) % $map[y].size
+  while y < $lines.size
+    count += 1 if $lines[y][x] == '#'
+    x = (x + dx) % $lines[y].size
     y += dy
   end
   count
 end
 
-puts trees(3, 1)
-puts trees(1, 1) * trees(3, 1) * trees(5, 1) * trees(7, 1) * trees(1, 2)
+puts tree_count(3, 1)
+puts tree_count(1, 1) * tree_count(3, 1) * tree_count(5, 1) * tree_count(7, 1) * tree_count(1, 2)
