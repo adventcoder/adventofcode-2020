@@ -1,3 +1,13 @@
+class Integer
+  def lsb_index
+    #TODO
+  end
+
+  def msb_index
+    #TODO
+  end
+end
+
 class Array
   def find_index(x, lo = 0, hi = size)
     while hi - lo > 1
