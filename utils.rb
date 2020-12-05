@@ -1,12 +1,5 @@
-class Integer
-  def lsb_index
-    #TODO
-  end
 
-  def msb_index
-    #TODO
-  end
-end
+Infinity = Float::INFINITY
 
 class Array
   def find_index(x, lo = 0, hi = size)
