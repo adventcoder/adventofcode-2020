@@ -1,6 +1,24 @@
 
 Infinity = Float::INFINITY
 
+module Enumerable
+  def sum(zero = 0)
+    if block_given?
+      inject(zero) { |acc, x| acc + yield(x) }
+    else
+      inject(zero) { |acc, n| acc + n }
+    end
+  end
+
+  def product(one = 1)
+    if block_given?
+      inject(one) { |acc, x| acc * yield(x) }
+    else
+      inject(one) { |acc, n| acc * n }
+    end
+  end
+end
+
 class Array
   def find_index(x, lo = 0, hi = size)
     while hi - lo > 1
