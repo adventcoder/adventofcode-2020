@@ -4,35 +4,46 @@ Infinity = Float::INFINITY
 module Enumerable
   def sum(zero = 0)
     if block_given?
-      inject(zero) { |acc, x| acc + yield(x) }
+      inject(zero) { |acc, x| acc + (yield x) }
     else
       inject(zero) { |acc, n| acc + n }
     end
   end
 
-  def product(one = 1)
+  def prod(one = 1)
     if block_given?
-      inject(one) { |acc, x| acc * yield(x) }
+      inject(one) { |acc, x| acc * (yield x) }
     else
       inject(one) { |acc, n| acc * n }
     end
   end
 end
 
-class Array
-  def find_index(x, lo = 0, hi = size)
-    while hi - lo > 1
-      i = lo + (hi - lo) / 2
-      if self[i] < x
-        lo = i + 1
-      elsif self[i] > x
-        hi = i
-      else
-        return j
+class Range
+  def bsearch(target)
+    min = first
+    max = exclude_end? ? last - 1 : last
+    while min < max
+      mid = (min + max) / 2
+      case (yield mid) <=> target
+      when -1
+        min = mid + 1
+      when 1
+        max = mid - 1
+      when 0
+        return mid
       end
     end
-    return lo if hi > lo && self[lo] == x
+    if min == max
+      return min if (yield min) == target
+    end
     nil
+  end
+end
+
+class Array
+  def bsearch_index(target, first = 0, last = size)
+    (first ... last).bsearch(target) { |i| self[i] }
   end
 end
 
