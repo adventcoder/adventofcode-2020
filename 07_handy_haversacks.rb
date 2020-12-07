@@ -15,11 +15,11 @@ input.each_line do |line|
 end
 
 def contains?(color, target)
-  color == target || $contained[color].any? { |(n, subcolor)| contains?(subcolor, target) }
+  color == target || $contained[color].any? { |(n, contained)| contains?(contained, target) }
 end
 
 def expanded_size(color)
-  $contained[color].sum { |n, subcolor| n + n * expanded_size(subcolor) }
+  $contained[color].sum { |n, contained| n + n * expanded_size(contained) }
 end
 
 puts $contained.keys.count { |color| color != 'shiny gold' and contains?(color, 'shiny gold') }

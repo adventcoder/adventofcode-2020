@@ -1,7 +1,6 @@
 
 require_relative '00_common.rb'
 
-
 report = []
 get_input(1).each_line do |line|
   report << line.chomp.to_i
