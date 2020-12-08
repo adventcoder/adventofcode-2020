@@ -92,3 +92,39 @@ def find_path_with_cost(start)
   end
   nil
 end
+
+class DisjointSet
+  attr_reader :size
+
+  def initialize(size)
+    @parent = Array.new(size) { |i| i }
+    @height = Array.new(size, 1)
+    @size = size
+  end
+
+  def find(i)
+    root = i
+    until @parent[root] == root
+      root = @parent[root]
+    end
+    until @parent[i] == root
+      i, @parent[i] = @parent[i], root
+    end
+    root
+  end
+
+  def merge(i, j)
+    i = find(i)
+    j = find(j)
+    return if i == j
+    if @height[i] < @height[j]
+      @parent[i] = j
+    elsif @height[j] < @height[i]
+      @parent[j] = i
+    else
+      @parent[i] = j
+      @height[j] += 1
+    end
+    @size -= 1
+  end
+end
