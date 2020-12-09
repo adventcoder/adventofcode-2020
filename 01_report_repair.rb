@@ -1,25 +1,31 @@
 
 require_relative '00_common.rb'
 
-report = []
-get_input(1).each_line do |line|
-  report << line.chomp.to_i
-end
-report.sort!
-
-def find_disparities(report, n, target, start = 0)
-  if n == 1
-    return [target] if report.bsearch_index(target, start)
-  else
-    for i in start ... report.size - (n - 1)
-      break if (n - 1) * report[i] > target
-      if prices = find_disparities(report, n - 1, target - report[i], i + 1)
-        return [report[i], *prices]
-      end
+def sum2(nums, target)
+  i = 0
+  j = nums.size - 1
+  while i < j
+    if nums[i] + nums[j] > target
+      j -= 1
+    elsif nums[i] + nums[j] < target
+      i += 1
+    else
+      return nums[i], nums[j]
     end
   end
   nil
 end
 
-puts find_disparities(report, 2, 2020).prod
-puts find_disparities(report, 3, 2020).prod
+def sum3(nums, target)
+  for num in nums
+    if pair = sum2(nums, target - num)
+      return [*pair, num]
+    end
+  end
+  nil
+end
+
+report = get_input(1).lines.map(&:to_i)
+report.sort!
+puts sum2(report, 2020).prod
+puts sum3(report, 2020).prod
