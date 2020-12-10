@@ -33,7 +33,7 @@ def combs_recur(jolts, start = 0, memo = {})
   end
 end
 
-# Not my solution but of course the number of ways to end at an adapter is the number of ways for all the possible previous adapters.
+# Not my solution but of course the number of ways to end at an adapter is the number of ways for all the possible previous adapters added up.
 def combs_dp(jolts)
   combs = Hash.new(0)
   combs[jolts.first] = 1
