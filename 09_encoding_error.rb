@@ -1,11 +1,15 @@
 
 require_relative '00_common.rb'
 
+require 'set'
+
 def find_invalid(nums)
+  prev = Set.new
+  prev.merge(nums.take(25))
   for i in 25 ... nums.size
-    if nums[i - 25 ... i].combination(2).none? { |a, b| a + b == nums[i] }
-      return nums[i]
-    end
+    return nums[i] if prev.none? { |p| prev.include?(nums[i] - p) }
+    prev.delete(nums[i - 25])
+    prev.add(nums[i])
   end
   nil
 end
