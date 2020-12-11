@@ -2,25 +2,24 @@ require_relative '00_common.rb'
 
 input = get_input(7)
 
-$contained = Hash.new { |h,k| h[k] = [] }
-
+$contents = Hash.new { |h, k| h[k] = [] }
 input.each_line do |line|
-  next if line.include?('contain no other')
-  lhs, rhs = line.delete('.').gsub(/bags?/, '').split('contain', 2)
-  color = lhs.strip
-  rhs.split(',').each do |s|
-    n, contained_color = s.strip.split(' ', 2)
-    $contained[color] << [n.to_i, contained_color]
+  words = line.delete('.,').split
+  words.delete_if { |word| word == 'contain' or word =~ /^bags?$/ }
+  next if words.last(2) == ['no', 'other']
+  bag = words.take(2).join(' ')
+  words.drop(2).each_slice(3) do |n, *c|
+    $contents[bag] << [n.to_i, c.join(' ')]
   end
 end
 
-def contains?(color, target)
-  color == target || $contained[color].any? { |(n, contained)| contains?(contained, target) }
+def contains?(bag, target)
+  $contents[bag].any? { |n, c| c == target || contains?(c, target) }
 end
 
-def expanded_size(color)
-  $contained[color].sum { |n, contained| n + n * expanded_size(contained) }
+def count_all_contained(bag)
+  $contents[bag].sum { |n, c| n + n * count_all_contained(c) }
 end
 
-puts $contained.keys.count { |color| color != 'shiny gold' and contains?(color, 'shiny gold') }
-puts expanded_size('shiny gold')
+puts $contents.keys.count { |bag| contains?(bag, 'shiny gold') }
+puts count_all_contained('shiny gold')
