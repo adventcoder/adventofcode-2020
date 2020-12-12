@@ -1,58 +1,61 @@
 require_relative '00_common.rb'
 
-DIR8 = [*-1 .. 1].product([*-1 .. 1]).select { |(x, y)| [x.abs, y.abs].max == 1 }
-
-def valid?(grid, x, y)
-  y.between?(0, grid.size - 1) && x.between?(0, grid[y].size - 1)
-end
-
-def occupied_adjacent(grid, x, y)
-  count = 0
-  for dx, dy in DIR8
-    x1 = x + dx
-    y1 = y + dy
-    count += 1 if valid?(grid, x1, y1) && grid[y1][x1] == '#'
-  end
-  count
-end
-
-def occupied_visible(grid, x, y)
-  count = 0
-  for dx, dy in DIR8
-    x1 = x + dx
-    y1 = y + dy
-    while valid?(grid, x1, y1) && grid[y1][x1] == '.'
-      x1 += dx
-      y1 += dy
-    end
-    count += 1 if valid?(grid, x1, y1) && grid[y1][x1] == '#'
-  end
-  count
-end
-
-def simulate(input, occupied, max_occupied)
-  grid = input.lines.map(&:chomp)
-  temp = grid.map(&:dup)
-  loop do
-    changed = false
-    for y in 0 ... grid.size
-      for x in 0 ... grid[y].size
-        if grid[y][x] == 'L' && occupied.call(grid, x, y) == 0
-          temp[y][x] = '#'
-          changed = true
-        elsif grid[y][x] == '#' && occupied.call(grid, x, y) >= max_occupied
-          temp[y][x] = 'L'
-          changed = true
-        else
-          temp[y][x] = grid[y][x]
-        end
-      end
-    end
-    return grid if !changed
-    grid, temp = temp, grid
-  end
-end
+require 'set'
 
 input = get_input(11)
-puts simulate(input, method(:occupied_adjacent), 4).sum { |row| row.count('#') }
-puts simulate(input, method(:occupied_visible), 5).sum { |row| row.count('#') }
+
+DIR8 = [*-1 .. 1].product([*-1 .. 1]).select { |(x, y)| [x.abs, y.abs].max == 1 }
+
+def parse(input)
+  height = input.lines.count
+  width = input.lines.map { |line| line.chomp.size }.max
+  occupied = {}
+  input.lines.each_with_index do |line, y|
+    line.chomp.chars.each_with_index do |c, x|
+      if c == 'L'
+        occupied[[x, y]] = false
+      elsif c == '#'
+        occupied[[x, y]] = true
+      end
+    end
+  end
+  return occupied, width, height
+end
+
+def cast(occupied, origin, dir, max_radius)
+  1.upto(max_radius) do |r|
+    seat = [origin[0] + r * dir[0], origin[1] + r * dir[1]]
+    break seat if occupied.has_key?(seat)
+  end
+end
+
+def simulate(occupied, max_radius, max_occupied)
+  active = Set.new(occupied.keys)
+  until active.empty?
+    next_occupied = occupied.dup
+    active.each do |seat|
+      count = 0
+      DIR8.each do |dir|
+        neighbour = cast(occupied, seat, dir, max_radius)
+        count += 1 if neighbour && occupied[neighbour]
+      end
+      if !occupied[seat] && count == 0
+        next_occupied[seat] = true
+      elsif occupied[seat] && count >= max_occupied
+        next_occupied[seat] = false
+      else
+        active.delete(seat)
+      end
+    end
+    occupied = next_occupied
+  end
+  occupied
+end
+
+initial, width, height = parse(input)
+
+result1 = simulate(initial, 1, 4)
+puts result1.keys.count { |seat| result1[seat] }
+
+result2 = simulate(initial, [width, height].max, 5)
+puts result2.keys.count { |seat| result2[seat] }
