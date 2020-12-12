@@ -32,22 +32,24 @@ end
 
 def simulate(input, occupied, max_occupied)
   grid = input.lines.map(&:chomp)
+  temp = grid.map(&:dup)
   loop do
-    copy = grid.map(&:dup)
     changed = false
     for y in 0 ... grid.size
       for x in 0 ... grid[y].size
         if grid[y][x] == 'L' && occupied.call(grid, x, y) == 0
-          copy[y][x] = '#'
+          temp[y][x] = '#'
           changed = true
         elsif grid[y][x] == '#' && occupied.call(grid, x, y) >= max_occupied
-          copy[y][x] = 'L'
+          temp[y][x] = 'L'
           changed = true
+        else
+          temp[y][x] = grid[y][x]
         end
       end
     end
     return grid if !changed
-    grid = copy
+    grid, temp = temp, grid
   end
 end
 
