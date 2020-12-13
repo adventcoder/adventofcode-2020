@@ -24,13 +24,28 @@ def bezout(a, b)
   curr
 end
 
-t0 = 0
-dt = 1
+class Lattice
+  attr_reader :first, :step
+
+  def initialize(first, step)
+    @step = step
+    @first = first % @step
+  end
+
+  def [](i)
+    @first + i * @step
+  end
+
+  def &(other)
+    d, x, _ = bezout(self.step, other.step)
+    raise unless (other.first - self.first) % d == 0
+    Lattice.new(self[x * (other.first - self.first) / d], (self.step * other.step) / d)
+  end
+end
+
+t = Lattice.new(0, 1)
 bus_ids.each_with_index do |bus_id, i|
   next if bus_id == 0
-  d, x, y = bezout(bus_id, -dt)
-  t0 += y * (t0 + i) * dt / d
-  dt *= bus_id / d
-  t0 %= dt
+  t &= Lattice.new(-i, bus_id)
 end
-puts t0
+puts t.first
