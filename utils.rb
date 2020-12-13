@@ -47,6 +47,12 @@ class Array
   end
 end
 
+class Integer
+  def sgn
+    self <=> 0
+  end
+end
+
 def find_path(start)
   prev = { start => nil }
   queue = [start]
