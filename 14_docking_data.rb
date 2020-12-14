@@ -1,7 +1,5 @@
 require_relative '00_common.rb'
 
-input = get_input(14)
-
 def part1(input)
   mem = {}
   and_mask = -1
