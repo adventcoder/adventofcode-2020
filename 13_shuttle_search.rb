@@ -37,9 +37,9 @@ class Lattice
   end
 
   def &(other)
-    d, x, _ = bezout(self.step, other.step)
+    d, x, y = bezout(self.step, other.step)
     raise unless (other.first - self.first) % d == 0
-    Lattice.new(self[x * (other.first - self.first) / d], (self.step * other.step) / d)
+    Lattice.new((other.first * self.step * x + self.first * other.step * y) / d, (self.step * other.step) / d)
   end
 end
 
