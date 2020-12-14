@@ -6,56 +6,67 @@ input = get_input(11)
 
 DIR8 = [*-1 .. 1].product([*-1 .. 1]).select { |(x, y)| [x.abs, y.abs].max == 1 }
 
-def parse(input)
-  height = input.lines.count
-  width = input.lines.map { |line| line.chomp.size }.max
-  occupied = {}
-  input.lines.each_with_index do |line, y|
-    line.chomp.chars.each_with_index do |c, x|
-      if c == 'L'
-        occupied[[x, y]] = false
-      elsif c == '#'
-        occupied[[x, y]] = true
-      end
-    end
-  end
-  return occupied, width, height
+def all_seats(state)
+  state.flat_map.with_index { |row, y| row.chars.filter_map.with_index { |c, x| [x, y] unless c == '.' } }
 end
 
-def cast(occupied, origin, dir, max_radius)
-  1.upto(max_radius) do |r|
-    seat = [origin[0] + r * dir[0], origin[1] + r * dir[1]]
-    break seat if occupied.has_key?(seat)
+def count_occupied_seats(state)
+  state.sum { |row| row.count('#') }
+end
+
+def seat_occupied?(state, x, y)
+  return false unless y.between?(0, state.size - 1) && x.between?(0, state[y].size - 1)
+  state[y][x] == '#'
+end
+
+def seat_occupied_in_direction?(state, x, y, dx, dy)
+  loop do
+    x += dx
+    y += dy
+    return false unless y.between?(0, state.size - 1) && x.between?(0, state[y].size - 1)
+    return state[y][x] == '#' unless state[y][x] == '.'
   end
 end
 
-def simulate(occupied, max_radius, max_occupied)
-  active = Set.new(occupied.keys)
+def simulate1(state)
+  active = Set.new(all_seats(state))
   until active.empty?
-    next_occupied = occupied.dup
-    active.each do |seat|
-      count = 0
-      DIR8.each do |dir|
-        neighbour = cast(occupied, seat, dir, max_radius)
-        count += 1 if neighbour && occupied[neighbour]
-      end
-      if !occupied[seat] && count == 0
-        next_occupied[seat] = true
-      elsif occupied[seat] && count >= max_occupied
-        next_occupied[seat] = false
+    next_state = state.map(&:dup)
+    active.each do |x, y|
+      occupied = DIR8.count { |dx, dy| seat_occupied?(state, x + dx, y + dy) }
+      if state[y][x] == 'L' && occupied == 0
+        next_state[y][x] = '#'
+      elsif state[y][x] == '#' && occupied >= 4
+        next_state[y][x] = 'L'
       else
-        active.delete(seat)
+        active.delete([x, y])
       end
     end
-    occupied = next_occupied
+    state = next_state
   end
-  occupied
+  state
 end
 
-initial, width, height = parse(input)
+def simulate2(state)
+  active = Set.new(all_seats(state))
+  state = state.map(&:dup)
+  until active.empty?
+    next_state = state.map(&:dup)
+    active.each do |x, y|
+      occupied = DIR8.count { |dx, dy| seat_occupied_in_direction?(state, x, y, dx, dy) }
+      if state[y][x] == 'L' && occupied == 0
+        next_state[y][x] = '#'
+      elsif state[y][x] == '#' && occupied >= 5
+        next_state[y][x] = 'L'
+      else
+        active.delete([x, y])
+      end
+    end
+    state = next_state
+  end
+  state
+end
 
-result1 = simulate(initial, 1, 4)
-puts result1.keys.count { |seat| result1[seat] }
-
-result2 = simulate(initial, [width, height].max, 5)
-puts result2.keys.count { |seat| result2[seat] }
+initial_state = input.lines.map(&:chomp)
+puts count_occupied_seats(simulate1(initial_state))
+puts count_occupied_seats(simulate2(initial_state))
