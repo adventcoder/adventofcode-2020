@@ -22,32 +22,36 @@ end
 
 def part2(input)
   mem = {}
-  mask = '0' * 36
+  or_mask = 0
+  floating_indexes = []
   input.each_line do |line|
     case line.chomp
     when /^mask = (.*)$/
-      mask = $1
+      or_mask = $1.tr('X', '0').to_i(2)
+      floating_indexes = $1.reverse.chars.filter_map.with_index { |c, i| i if c == 'X' }
     when /^mem\[([^\]]+)\] = (.*)$/
-      addr = $1.to_i.to_s(2).rjust(36, '0')
+      addr = $1.to_i
       value = $2.to_i
-      write(mem, addr, value, mask)
+      addr |= or_mask
+      for floating_bits in 0 ... (1 << floating_indexes.size)
+        addr = set_bits(addr, floating_bits, floating_indexes)
+        mem[addr] = value
+      end
     end
   end
   mem.values.sum
 end
 
-def write(mem, addr, value, mask, i = 0)
-  while i < 36
-    if mask[i] == 'X'
-      addr[i] = '0'
-      write(mem, addr.dup, value, mask, i + 1)
-      addr[i] = '1'
-    elsif mask[i] == '1'
-      addr[i] = '1'
+def set_bits(addr, bits, indexes)
+  for i in indexes
+    if bits & 1 == 1
+      addr |= 1 << i
+    else
+      addr &= ~(1 << i)
     end
-    i += 1
+    bits >>= 1
   end
-  mem[addr.to_i(2)] = value
+  addr
 end
 
 input = get_input(14)

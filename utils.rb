@@ -93,14 +93,15 @@ def find_path_with_cost(start)
     cost[curr] = open.delete(curr)
 
     if curr.goal?
+      total_cost = cost[curr]
       path = [curr]
       path << curr while curr = prev[curr]
       path.reverse!
-      return path, cost[curr]
+      return path, total_cost
     end
 
     curr.each_neighbour_with_cost do |neighbour, delta|
-      next if closed.has_key?(neighbour)
+      next if cost.include?(neighbour)
       next if open[neighbour] && open[neighbour] < cost[curr] + delta
       open[neighbour] = cost[curr] + delta
       prev[neighbour] = curr
