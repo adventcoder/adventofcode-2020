@@ -43,9 +43,5 @@ class Lattice
   end
 end
 
-t = Lattice.new(0, 1)
-bus_ids.each_with_index do |bus_id, i|
-  next if bus_id == 0
-  t &= Lattice.new(-i, bus_id)
-end
-puts t.first
+constraints = bus_ids.filter_map.with_index { |bus_id, i| Lattice.new(-i, bus_id) unless bus_id == 0 }
+puts constraints.inject(&:&).first

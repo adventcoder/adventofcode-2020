@@ -17,6 +17,16 @@ module Enumerable
       inject(one) { |acc, n| acc * n }
     end
   end
+
+  def filter_map
+    return enum_for(:filter_map) unless block_given?
+    ys = []
+    each do |x|
+      y = yield x
+      ys << y unless y.nil?
+    end
+    ys
+  end
 end
 
 class Range
