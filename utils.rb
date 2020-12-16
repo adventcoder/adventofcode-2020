@@ -55,59 +55,18 @@ class Array
   def bsearch_index(target, first = 0, last = size)
     (first ... last).bsearch(target) { |i| self[i] }
   end
+
+  def swap(i, j)
+    temp = self[i]
+    self[i] = self[j]
+    self[j] = temp
+  end
 end
 
 class Integer
   def sgn
     self <=> 0
   end
-end
-
-def find_path(start)
-  prev = { start => nil }
-  queue = [start]
-  until queue.empty?
-    curr = queue.shift
-
-    if curr.goal?
-      path = [curr]
-      path << curr while curr = prev[curr]
-      path.reverse!
-      return path
-    end
-
-    curr.each_neighbour do |neighbour|
-      next if prev.include?(neighbour)
-      prev[neighbour] = curr
-    end
-  end
-  nil
-end
-
-def find_path_with_cost(start)
-  open = { start => 0 }
-  prev = { start => nil }
-  cost = {}
-  until open.empty?
-    curr = open.min { |a, b| a[1] <=> b[1] }[0]
-    cost[curr] = open.delete(curr)
-
-    if curr.goal?
-      total_cost = cost[curr]
-      path = [curr]
-      path << curr while curr = prev[curr]
-      path.reverse!
-      return path, total_cost
-    end
-
-    curr.each_neighbour_with_cost do |neighbour, delta|
-      next if cost.include?(neighbour)
-      next if open[neighbour] && open[neighbour] < cost[curr] + delta
-      open[neighbour] = cost[curr] + delta
-      prev[neighbour] = curr
-    end
-  end
-  nil
 end
 
 class DisjointSet
@@ -143,5 +102,89 @@ class DisjointSet
       @height[j] += 1
     end
     @size -= 1
+  end
+end
+
+class PriorityQueue
+  def initialize
+    @heap = []
+  end
+
+  def empty?
+    @heap.empty?
+  end
+
+  def size
+    @heap.size
+  end
+
+  def push(value, priority)
+    @heap << [value, priority]
+    heapify_up(@heap.size - 1)
+    self
+  end
+
+  def pop
+    if @heap.empty?
+      nil
+    elsif @heap.size == 1
+      @heap.pop[0]
+    else
+      pair = @heap[0]
+      @heap[0] = @heap.pop
+      heapify_down(0)
+      pair[0]
+    end
+  end
+
+  def set_priority(value, priority)
+    index = @heap.index { |pair| pair[0].eql?(value) }
+    return if index == nil
+    old_priority = @heap[index][1]
+    @heap[index][1] = priority
+    if priority > old_priority
+      heapify_down(index)
+    elsif priority < old_priority
+      heapify_up(index)
+    end
+  end
+
+  def heapify_up(index)
+    while index > 0
+      parent_index = parent(index)
+      break if @heap[index][1] >= @heap[parent_index][1]
+      temp = @heap[index]
+      @heap[index] = @heap[parent_index]
+      @heap[parent_index] = temp
+      index = parent_index
+    end
+  end
+
+  def heapify_down(index)
+    while right_child(index) < @heap.size
+      min_child_index = right_child(index)
+      min_child_index = left_child(index) if @heap[left_child(index)][1] < @heap[min_child_index][1]
+      return if @heap[index][1] <= @heap[min_child_index][1]
+      @heap.swap(index, min_child_index)
+      index = min_child_index
+    end
+    if left_child(index) < @heap.size
+      min_child_index = left_child(index)
+      return if @heap[index][1] <= @heap[min_child_index][1]
+      @heap.swap(index, min_child_index)
+      index = min_child_index
+    end
+  end
+
+  def parent(index)
+    (index - 1) / 2
+  end
+
+  def left_child(index)
+    2 * index + 1
+  end
+
+  def right_child(index)
+    2 * index + 2
   end
 end
