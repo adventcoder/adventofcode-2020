@@ -1,5 +1,7 @@
 require_relative '00_common.rb'
 
+require 'set'
+
 parts = get_input(16).split("\n\n")
 
 rules = {}
@@ -23,20 +25,26 @@ puts nearby_tickets.sum { |ticket| error_rate(ticket, rules) }
 
 nearby_tickets.reject! { |ticket| error_rate(ticket, rules) > 0 }
 
-def rule_check_all(tickets, j, rule)
-  tickets.all? { |ticket| rule_check(ticket[j], rule) }
+def rule_check_all(tickets, i, rule)
+  tickets.all? { |ticket| rule_check(ticket[i], rule) }
 end
 
-options = Array.new(my_ticket.size) do |j|
-  rules.keys.select { |field| rule_check_all(nearby_tickets, j, rules[field]) }
+options = Hash.new { |h, k| h[k] = Set.new }
+rules.each do |field, rule|
+  for i in 0 ... my_ticket.size
+    options[field] << i if rule_check_all(nearby_tickets, i, rule)
+  end
 end
 
-# TODO: this can probably fail
 fields = []
-while i = options.index { |opt| opt.size == 1 }
-  fields[i] = options[i][0]
-  options.each do |opts|
-    opts.delete(fields[i])
+until options.empty?
+  options.each_key do |field|
+    if options[field].size == 1
+      index = options[field].first
+      fields[index] = field
+      options.delete(field)
+      options.each_value { |opts| opts.delete(index) }
+    end
   end
 end
 
