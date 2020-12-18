@@ -1,4 +1,4 @@
-require_relative '00_common.rb'
+require_relative 'common.rb'
 
 lines = get_input(13).lines.to_a
 my_earliest_time = lines[0].to_i

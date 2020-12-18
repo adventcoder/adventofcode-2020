@@ -1,6 +1,6 @@
-require_relative '00_common.rb'
+require_relative 'common.rb'
 
-def trees(map, dx, dy)
+def count_trees(map, dx, dy)
   x = 0
   y = 0
   count = 0

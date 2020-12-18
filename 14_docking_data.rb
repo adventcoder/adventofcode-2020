@@ -1,4 +1,4 @@
-require_relative '00_common.rb'
+require_relative 'common.rb'
 
 def part1(input)
   mem = {}

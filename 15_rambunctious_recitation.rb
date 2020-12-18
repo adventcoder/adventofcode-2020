@@ -1,4 +1,4 @@
-require_relative '00_common.rb'
+require_relative 'common.rb'
 
 def get_num(final_turn, starting_nums)
   last_turn = {}

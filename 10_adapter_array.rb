@@ -1,5 +1,5 @@
 
-require_relative '00_common.rb'
+require_relative 'common.rb'
 
 input = get_input(10)
 
