@@ -1,64 +1,57 @@
 require_relative '00_common.rb'
 
+input = get_input(18)
+
+class RPN
+  def initialize
+    @stack = []
+  end
+
+  def pop
+    @stack.pop
+  end
+
+  def <<(token)
+    case token
+    when '+'
+      a, b = @stack.pop(2)
+      @stack << a + b
+    when '*'
+      a, b = @stack.pop(2)
+      @stack << a * b
+    else
+      @stack << token.to_i
+    end
+  end
+end
+
+def evaluate(expr, precedence)
+  rpn = RPN.new
+  ops = []
+  for token in tokenize(expr)
+    if token == '('
+      ops << token
+    elsif token == ')'
+      rpn << ops.pop until ops.last == '('
+      ops.pop
+    elsif precedence.has_key?(token)
+      rpn << ops.pop while precedence.has_key?(ops.last) && precedence[ops.last] >= precedence[token]
+      ops << token
+    else
+      rpn << token
+    end
+  end
+  rpn << ops.pop until ops.empty?
+  rpn.pop
+end
+
 def tokenize(line)
   line = line.gsub('(', ' ( ')
   line = line.gsub(')', ' ) ')
   line.split
 end
 
-def eval1(tokens)
-  num, expr = lambda do
-    case t = tokens.shift
-    when '('
-      acc = expr.call
-      raise unless tokens.shift == ')'
-      acc
-    else
-      t.to_i
-    end
-  end, lambda do
-    acc = num.call
-    while tokens.first == '*' || tokens.first == '+'
-      case tokens.shift
-      when '*'
-        acc *= num.call
-      when '+'
-        acc += num.call
-      end
-    end
-    acc
-  end
-  expr.call
-end
-
-def eval2(tokens)
-  num, sum, product = lambda do
-    case t = tokens.shift
-    when '('
-      acc = product.call
-      raise unless tokens.shift == ')'
-      acc
-    else
-      t.to_i
-    end
-  end, lambda do
-    acc = num.call
-    while tokens.first == '+'
-      tokens.shift
-      acc += num.call
-    end
-    acc
-  end, lambda do
-    acc = sum.call
-    while tokens.first == '*'
-      tokens.shift
-      acc *= sum.call
-    end
-    acc
-  end
-  product.call
-end
-
-input = get_input(18)
-puts input.lines.sum { |line| eval1(tokenize(line)) }
-puts input.lines.sum { |line| eval2(tokenize(line)) }
+precedence1 = { '+' => 1, '*' => 1 }
+precedence2 = { '+' => 2, '*' => 1 }
+puts input.lines.sum { |line| evaluate(line, precedence1) }
+puts input.lines.sum { |line| evaluate(line, precedence2) }
