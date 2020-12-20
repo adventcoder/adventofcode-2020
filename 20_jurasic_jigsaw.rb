@@ -1,192 +1,193 @@
 require_relative 'common'
 
-input = get_input(20)
-SIZE = 12
+class Image
+  attr_reader :rows, :width, :height
 
-tiles = {}
-for part in input.split("\n\n")
-  tile_id = part.lines.first[/(\d+)/, 1].to_i
-  tile = part.lines.drop(1).map(&:chomp)
-  tiles[tile_id] = tile
-end
-
-def borders(tile)
-  borders = [0, 0, 0, 0]
-  for i in 0 ... 10
-    top = tile[0][i] == '#' ? 1 : 0
-    bottom = tile[9][i] == '#' ? 1 : 0
-    left = tile[i][0] == '#' ? 1 : 0
-    right = tile[i][9] == '#' ? 1 : 0
-    borders[0] |= top << i
-    borders[1] |= right << i
-    borders[2] |= bottom << i
-    borders[3] |= left << i
+  def initialize(rows, width = rows[0].size, height = rows.size)
+    @rows = rows
+    @width = width
+    @height = height
   end
-  borders
-end
 
-def rotate(tile)
-  new_tile = Array.new(tile.size) { "." * tile.size }
-  for y in 0 ... tile.size
-    for x in 0 ... tile.size
-      new_tile[x][tile.size - y - 1] = tile[y][x]
+  def top
+    @rows[0]
+  end
+
+  def bottom
+    @rows[@height - 1]
+  end
+
+  def left
+    Array.new(@height) { |y| @rows[y][0] }.join
+  end
+
+  def right
+    Array.new(@height) { |y| @rows[y][@width - 1] }.join
+  end
+
+  def sides
+    [top, bottom, left, right]
+  end
+
+  def each_orientation
+    image = self
+    yield image
+    3.times do
+      image = image.rotate
+      yield image
+    end
+    image = image.flip
+    yield image
+    3.times do
+      image = image.rotate
+      yield image
     end
   end
-  new_tile
+
+  def rotate
+    new_rows = Array.new(@width) do |y|
+      Array.new(@height) do |x|
+        @rows[@height - x - 1][y]
+      end.join
+    end
+    Image.new(new_rows, @height, @width)
+  end
+
+  def flip
+    Image.new(@rows.reverse, @width, @height)
+  end
+
+  def count(c)
+    @rows.sum { |row| row.count(c) }
+  end
+
+  def to_s
+    @rows.join("\n")
+  end
 end
 
-def flip(tile)
-  new_tile = Array.new(tile.size) { '.' * tile.size }
-  for y in 0 ... tile.size
-    for x in 0 ... tile.size
-      new_tile[x][tile.size - y - 1] = tile[x][y]
+def unmatched?(target, skip_id, tiles)
+  for id, tile in tiles
+    next if id == skip_id
+    for side in tile.sides
+      return false if side == target || side == target.reverse
     end
   end
-  new_tile
+  true
 end
 
-def all_orientations(tile)
-  os = []
-  4.times do
-    tile = rotate(tile)
-    os << borders(tile)
-  end
-  tile = flip(tile)
-  4.times do
-    tile = rotate(tile)
-    os << borders(tile)
-  end
-  os
-end
-
-def orient_to_tile(target, tile)
-  4.times do
-    tile = rotate(tile)
-    return tile if borders(tile) == target
-  end
-  tile = flip(tile)
-  4.times do
-    tile = rotate(tile)
-    return tile if borders(tile) == target
-  end
-  nil
-end
-
-def reverse(side)
-  new_side = 0
-  10.times do |i|
-    new_side <<= 1
-    new_side |= ((side >> i) & 1)
-  end
-  new_side
-end
-
-borders = {}
-orients = {}
-for id, tile in tiles
-  orients[id] = all_orientations(tile)
-  borders[id] = borders(tile)
-end
-
-def options(image, orients, i)
-  x = i % SIZE
-  y = i / SIZE
-  top = nil
-  if y > 0
-    top = image[(y - 1) * SIZE + x][1][2]
-  end
-  left = nil
-  if x > 0
-    left = image[y * SIZE + (x - 1)][1][1]
-  end
-  orients.each do |id, options|
-    options.each do |border|
-      yield id, border if (top == nil or border[0] == top) and (left == nil or border[3] == left)
-    end
-  end
-end
-
-def fill(image, orients, start)
-  if start == image.size
-    return true
-  end
-  options(image, orients, start) do |id, borders|
-    image[start] = [id, borders]
-    copy = orients.dup
-    copy.delete(id)
-    if fill(image, copy, start + 1)
-      return true
-    end
-  end
-  image[start] = nil
-  return false
-end
-
-image = Array.new(SIZE * SIZE)
-fill(image, orients, 0)
-
-image2 = Array.new(SIZE) { Array.new(SIZE) }
-for y in 0 ... SIZE
-  for x in 0 ... SIZE
-    image2[y][x] = orient_to_tile(image[y * SIZE + x][1], tiles[image[y * SIZE + x][0]])
-  end
-end
-
-joined = Array.new(SIZE * 8) { "." * (SIZE * 8) }
-for y in 0 ... SIZE
-  for x in 0 ... SIZE
-    for yy in 0 ... 8
-      for xx in 0 ... 8
-        joined[y * 8 + yy][x * 8 + xx] = image2[y][x][yy + 1][xx + 1]
+def pick_top_left_tile(tiles)
+  for id, tile in tiles
+    tile.each_orientation do |orientation|
+      if unmatched?(orientation.left, id, tiles) && unmatched?(orientation.top, id, tiles)
+        tiles.delete(id)
+        return orientation
       end
     end
   end
 end
 
-monster = <<-EOS
-                  # 
-#    ##    ##    ###
- #  #  #  #  #  #   
-EOS
-monster = monster.lines.map(&:chomp)
-
-def monster_at(image, x, y, monster)
-  for yy in 0 ... monster.size
-    for xx in 0 ... monster[yy].size
-      next unless monster[yy][xx] == '#'
-      return false if image[y + yy][x + xx] != '#'
+def pick_top_tile(tiles, left)
+  for id, tile in tiles
+    tile.each_orientation do |orientation|
+      if left.right == orientation.left && unmatched?(orientation.top, id, tiles)
+        tiles.delete(id)
+        return orientation
+      end
     end
   end
-  return true
 end
 
-def delete_monster(image, monster)
-  for y in 0 ... image.size - monster.size
-    for x in 0 ... image[y].size - monster[0].size
-      if monster_at(image, x, y, monster)
-        for yy in 0 ... monster.size
-          for xx in 0 ... monster[yy].size
-            next unless monster[yy][xx] == '#'
-            image[y + yy][x + xx] = 'O'
-          end
+def pick_left_tile(tiles, top)
+  for id, tile in tiles
+    tile.each_orientation do |orientation|
+      if top.bottom == orientation.top && unmatched?(orientation.left, id, tiles)
+        tiles.delete(id)
+        return orientation
+      end
+    end
+  end
+end
+
+def pick_middle_tile(tiles, left, top)
+  for id, tile in tiles
+    tile.each_orientation do |orientation|
+      if orientation.top == top.bottom && orientation.left == left.right
+        tiles.delete(id)
+        return orientation
+      end
+    end
+  end
+end
+
+def make_image(tiles)
+  size = Math.sqrt(tiles.size).floor
+  image = Array.new(size) { Array.new(size) }
+  image[0][0] = pick_top_left_tile(tiles)
+  for x in 1 ... image.size
+    image[0][x] = pick_top_tile(tiles, image[0][x - 1])
+  end
+  for y in 1 ... image.size
+    image[y][0] = pick_left_tile(tiles, image[y - 1][0])
+  end
+  for y in 1 ... image.size
+    for x in 1 ... image.size
+      image[y][x] = pick_middle_tile(tiles, image[y][x - 1], image[y - 1][x])
+    end
+  end
+  tile_width = image[0][0].width
+  tile_height = image[0][0].height
+  rows = Array.new((tile_height - 2) * size) { ' ' * ((tile_width - 2) * size) }
+  for y in 0 ... size
+    for x in 0 ... size
+      for yy in 0 ... tile_height - 2
+        for xx in 0 ... tile_width - 2
+          rows[y * (tile_height - 2) + yy][x * (tile_width - 2) + xx] = image[y][x].rows[yy + 1][xx + 1]
         end
       end
     end
   end
+  Image.new(rows, (tile_width - 2) * size, (tile_height - 2) * size)
 end
 
-0.times { joined = rotate(joined) }
-delete_monster(joined, monster)
-for row in joined
-  puts row
-end
-puts
-
-count = 0
-for y in 0 ... joined.size
-  for x in 0 ... joined[y].size
-    count += 1 if joined[y][x] == '#'
+def count_matches(sea, monster)
+  count = 0
+  sea.each_orientation do |orientation|
+    for y in 0 ... orientation.height - monster.height
+      for x in 0 ... orientation.width - monster.width
+        matched = true
+        for yy in 0 ... monster.height
+          for xx in 0 ... monster.width
+            next unless monster.rows[yy][xx] == '#'
+            if orientation.rows[y + yy][x + xx] != '#'
+              matched = false
+              break
+            end
+          end
+        end
+        count += 1 if matched
+      end
+    end
+    break if count > 0
   end
+  count
 end
-puts count
 
+input = get_input(20)
+
+tiles = {}
+for part in input.split("\n\n")
+  id = part.lines.first[/(\d+)/, 1].to_i
+  tiles[id] = Image.new(part.lines.drop(1).map(&:chomp))
+end
+
+puts tiles.prod { |id, tile| tile.sides.count { |side| unmatched?(side, id, tiles) } == 2 ? id : 1 }
+
+sea = make_image(tiles)
+monster = Image.new([
+  '                  # ',
+  '#    ##    ##    ###',
+  ' #  #  #  #  #  #   '
+])
+
+puts sea.count('#') - count_matches(sea, monster) * monster.count('#')
