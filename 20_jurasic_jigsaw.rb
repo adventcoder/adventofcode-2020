@@ -1,64 +1,46 @@
 require_relative 'common'
 
-class Image
-  attr_reader :rows, :width, :height
+class Tile
+  attr_reader :rows
 
-  def initialize(rows, width = rows[0].size, height = rows.size)
+  def initialize(rows)
     @rows = rows
-    @width = width
-    @height = height
   end
 
-  def top
-    @rows[0]
+  def size
+    @rows.size
   end
 
-  def bottom
-    @rows[@height - 1]
+  def [](x, y)
+    return nil if y >= @rows.size
+    @rows[y][x]
   end
 
-  def left
-    Array.new(@height) { |y| @rows[y][0] }.join
-  end
-
-  def right
-    Array.new(@height) { |y| @rows[y][@width - 1] }.join
-  end
-
-  def sides
-    [top, bottom, left, right]
-  end
+  def top; @rows[0]; end
+  def bottom; @rows[-1]; end
+  def left; @rows.map { |row| row[0] }.join; end
+  def right; @rows.map { |row| row[-1] }.join; end
 
   def each_orientation
-    image = self
-    yield image
-    3.times do
-      image = image.rotate
-      yield image
+    return enum_for(:each_orientation) unless block_given?
+    tile = self
+    4.times do
+      yield tile
+      yield tile.flip
+      tile = tile.rotate
     end
-    image = image.flip
-    yield image
-    3.times do
-      image = image.rotate
-      yield image
-    end
-  end
-
-  def rotate
-    new_rows = Array.new(@width) do |y|
-      Array.new(@height) do |x|
-        @rows[@height - x - 1][y]
-      end.join
-    end
-    Image.new(new_rows, @height, @width)
   end
 
   def flip
-    Image.new(@rows.reverse, @width, @height)
+    Tile.new(@rows.reverse)
   end
 
-  def count(c)
-    @rows.sum { |row| row.count(c) }
+  def rotate
+    Tile.new(Array.new(@rows.size) { |y|
+      Array.new(@rows.size) { |x|
+        @rows[x][@rows.size - 1 - y]
+      }.join
+    })
   end
 
   def to_s
@@ -66,128 +48,90 @@ class Image
   end
 end
 
-def unmatched?(target, skip_id, tiles)
-  for id, tile in tiles
-    next if id == skip_id
-    for side in tile.sides
-      return false if side == target || side == target.reverse
-    end
-  end
-  true
-end
-
-def pick_top_left_tile(tiles)
-  for id, tile in tiles
-    tile.each_orientation do |orientation|
-      if unmatched?(orientation.left, id, tiles) && unmatched?(orientation.top, id, tiles)
-        tiles.delete(id)
-        return orientation
-      end
-    end
-  end
-end
-
-def pick_top_tile(tiles, left)
-  for id, tile in tiles
-    tile.each_orientation do |orientation|
-      if left.right == orientation.left && unmatched?(orientation.top, id, tiles)
-        tiles.delete(id)
-        return orientation
-      end
-    end
-  end
-end
-
-def pick_left_tile(tiles, top)
-  for id, tile in tiles
-    tile.each_orientation do |orientation|
-      if top.bottom == orientation.top && unmatched?(orientation.left, id, tiles)
-        tiles.delete(id)
-        return orientation
-      end
-    end
-  end
-end
-
-def pick_middle_tile(tiles, left, top)
-  for id, tile in tiles
-    tile.each_orientation do |orientation|
-      if orientation.top == top.bottom && orientation.left == left.right
-        tiles.delete(id)
-        return orientation
-      end
-    end
-  end
-end
-
-def make_image(tiles)
-  size = Math.sqrt(tiles.size).floor
-  image = Array.new(size) { Array.new(size) }
-  image[0][0] = pick_top_left_tile(tiles)
-  for x in 1 ... image.size
-    image[0][x] = pick_top_tile(tiles, image[0][x - 1])
-  end
-  for y in 1 ... image.size
-    image[y][0] = pick_left_tile(tiles, image[y - 1][0])
-  end
-  for y in 1 ... image.size
-    for x in 1 ... image.size
-      image[y][x] = pick_middle_tile(tiles, image[y][x - 1], image[y - 1][x])
-    end
-  end
-  tile_width = image[0][0].width
-  tile_height = image[0][0].height
-  rows = Array.new((tile_height - 2) * size) { ' ' * ((tile_width - 2) * size) }
-  for y in 0 ... size
-    for x in 0 ... size
-      for yy in 0 ... tile_height - 2
-        for xx in 0 ... tile_width - 2
-          rows[y * (tile_height - 2) + yy][x * (tile_width - 2) + xx] = image[y][x].rows[yy + 1][xx + 1]
-        end
-      end
-    end
-  end
-  Image.new(rows, (tile_width - 2) * size, (tile_height - 2) * size)
-end
-
-def count_matches(sea, monster)
-  count = 0
-  sea.each_orientation do |orientation|
-    for y in 0 ... orientation.height - monster.height
-      for x in 0 ... orientation.width - monster.width
-        matched = true
-        for yy in 0 ... monster.height
-          for xx in 0 ... monster.width
-            next unless monster.rows[yy][xx] == '#'
-            if orientation.rows[y + yy][x + xx] != '#'
-              matched = false
-              break
-            end
-          end
-        end
-        count += 1 if matched
-      end
-    end
-    break if count > 0
-  end
-  count
-end
-
 input = get_input(20)
 
 tiles = {}
 for part in input.split("\n\n")
-  id = part.lines.first[/(\d+)/, 1].to_i
-  tiles[id] = Image.new(part.lines.drop(1).map(&:chomp))
+  id = part.lines.first[/\d+/].to_i
+  rows = part.lines.drop(1).map(&:chomp)
+  tiles[id] = Tile.new(rows)
 end
 
-puts tiles.prod { |id, tile| tile.sides.count { |side| unmatched?(side, id, tiles) } == 2 ? id : 1 }
+orientations = {}
+tiles.each do |id, tile|
+  tile.each_orientation.with_index do |orientation, i|
+    orientations[[id, i]] = orientation
+  end
+end
 
-sea = make_image(tiles)
-monster = Image.new([
+left = {}
+right = {}
+top = {}
+bottom = {}
+# Could do half as many iterations here since relation is symmetric but who cares.
+orientations.each do |i, a|
+  orientations.each do |j, b|
+    next if i[0] == j[0]
+    left[i] = j if a.left == b.right
+    right[i] = j if a.right == b.left
+    top[i] = j if a.top == b.bottom
+    bottom[i] = j if a.bottom == b.top
+  end
+end
+
+corners = orientations.keys.select { |i| top[i] == nil && left[i] == nil }
+puts corners.map { |(id, i)| id }.uniq.prod
+
+size = Math.sqrt(tiles.size).to_i
+grid = Array.new(size) { Array.new(size) }
+grid[0][0] = corners[0]
+for x in 1 ... size
+  grid[0][x] = right[grid[0][x - 1]]
+end
+for x in 0 ... size
+  for y in 1 ... size
+    grid[y][x] = bottom[grid[y - 1][x]]
+  end
+end
+
+tile_size = orientations[grid[0][0]].size - 2
+rows = Array.new(tile_size * size) { " " * (tile_size * size) }
+for y in 0 ... size
+  for x in 0 ... size
+    for tile_y in 0 ... tile_size
+      for tile_x in 0 ... tile_size
+        rows[y * tile_size + tile_y][x * tile_size + tile_x] = orientations[grid[y][x]][tile_x + 1, tile_y + 1]
+      end
+    end
+  end
+end
+mega_tile = Tile.new(rows)
+
+monster = [
   '                  # ',
   '#    ##    ##    ###',
   ' #  #  #  #  #  #   '
-])
+]
+monster_deltas = []
+for y in 0 ... monster.size
+  for x in 0 ... monster[y].size
+    if monster[y][x] == '#'
+      monster_deltas << [x, y]
+    end
+  end
+end
 
-puts sea.count('#') - count_matches(sea, monster) * monster.count('#')
+mega_tile.each_orientation do |orientation|
+  monster_count = 0
+  wave_count = 0
+  for y in 0 ... orientation.size
+    for x in 0 ... orientation.size
+      wave_count += 1 if mega_tile[x, y] == '#'
+      monster_count += 1 if monster_deltas.all? { |(dx, dy)| orientation[x + dx, y + dy] == '#' }
+    end
+  end
+  if monster_count > 0
+    puts wave_count - monster_count * monster_deltas.size
+    break
+  end
+end
