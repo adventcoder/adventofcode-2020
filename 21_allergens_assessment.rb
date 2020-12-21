@@ -2,8 +2,8 @@ require_relative 'common'
 
 input = get_input(21)
 
-allergen_candidates = {}
-ingredient_count = Hash.new(0)
+candidates = {}
+counts = Hash.new(0)
 
 input.each_line do |line|
   allergens = []
@@ -12,27 +12,27 @@ input.each_line do |line|
   end
   ingredients = line.split
 
-  ingredients.each do |food|
-    ingredient_count[food] += 1
+  ingredients.each do |ingredient|
+    counts[ingredient] += 1
   end
 
   allergens.each do |allergen|
-    if allergen_candidates[allergen] == nil
-      allergen_candidates[allergen] = ingredients
+    if candidates[allergen] == nil
+      candidates[allergen] = ingredients
     else
-      allergen_candidates[allergen] &= ingredients
+      candidates[allergen] &= ingredients
     end
   end
 end
 
-puts (ingredient_count.keys - allergen_candidates.values.flatten).sum { |k| ingredient_count[k] }
+puts (counts.keys - candidates.values.flatten).sum { |ingredient| counts[ingredient] }
 
 allergens = {}
-until allergen_candidates.empty?
-  allergen = allergen_candidates.keys.find { |k| allergen_candidates[k].size == 1 }
-  ingredient = allergen_candidates.delete(allergen).first
+until candidates.empty?
+  allergen = candidates.keys.find { |allergen| candidates[allergen].size == 1 }
+  ingredient = candidates.delete(allergen).first
   allergens[ingredient] = allergen
-  allergen_candidates.each_value { |ingredients| ingredients.delete(ingredient) }
+  candidates.each_value { |ingredients| ingredients.delete(ingredient) }
 end
 
 puts allergens.keys.sort_by { |ingredient| allergens[ingredient] }.join(',')
