@@ -1,51 +1,60 @@
 require_relative 'common'
 
+def parse_rules(input)
+  rules = {}
+  input.each_line do |line|
+    lhs, rhs = line.split(":", 2)
+    number = lhs.to_i
+    if rhs =~ /"([^"]+)"/
+      rules[number] = $1
+    else
+      rules[number] = rhs.split("|").map do |branch|
+        branch.split.map(&:to_i)
+      end
+    end
+  end
+  rules
+end
+
+def make_regexp_str(rules, number)
+  case rules[number]
+  when String
+    Regexp.escape(rules[number])
+  when Array
+    strs = rules[number].map do |branch|
+      strs = branch.map do |child_number|
+        make_regexp_str(rules, child_number)
+      end
+      "(" + strs.join(")(") + ")"
+    end
+    "(" + strs.join(")|(") + ")"
+  end
+end
+
 parts = get_input(19).split("\n\n")
+rules = parse_rules(parts[0])
+messages = parts[1].lines.map(&:chomp)
 
-$rules = Hash.new { |h, k| h[k] = [] }
-parts[0].each_line do |line|
-  lhs, rhs = line.split(":", 2)
-  i = lhs.to_i
-  if rhs =~ /"([^"]+)"/
-    $rules[i] << $1
+rule0 = Regexp.compile("^#{make_regexp_str(rules, 0)}$")
+puts messages.count { |message| message =~ rule0 }
+
+alias old_make_regexp_str make_regexp_str
+def make_regexp_str(rules, number)
+  case number
+  when 8
+    "(#{make_regexp_str(rules, 42)})+"
+  when 11
+    rule42_str = make_regexp_str(rules, 42)
+    rule31_str = make_regexp_str(rules, 31)
+    str = "(#{rule42_str})(#{rule31_str})"
+    10.times do
+      str = "(#{rule42_str})(#{str})?(#{rule31_str})"
+    end
+    str
   else
-    for alt in rhs.split("|")
-      $rules[i] << alt.split.map(&:to_i)
-    end
+    old_make_regexp_str(rules, number)
   end
 end
 
-$messages = parts[1].lines.map(&:chomp)
-
-def match_completely(message, i)
-  match(message, i, 0) do |end_index|
-    return true if end_index == message.size
-  end
-  false
-end
-
-def match(message, i, start, &block)
-  for alt in $rules[i]
-    case alt
-    when String
-      block.call(start + alt.size) if message[start, alt.size] == alt
-    when Array
-      match_sequence(message, alt, start, &block)
-    end
-  end
-end
-
-def match_sequence(message, is, start, &block)
-  if is.empty?
-    block.call(start)
-  else
-    match(message, is.first, start) do |next_start|
-      match_sequence(message, is.drop(1), next_start, &block)
-    end
-  end
-end
-
-puts $messages.count { |message| match_completely(message, 0) }
-$rules[8] = [[42], [42, 8]]
-$rules[11] = [[42, 31], [42, 11, 31]]
-puts $messages.count { |message| match_completely(message, 0) }
+rule0_prime = Regexp.compile("^#{make_regexp_str(rules, 0)}$")
+puts messages.count { |message| message =~ rule0_prime }
