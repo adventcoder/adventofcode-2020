@@ -95,6 +95,29 @@ class Cups
 end
 
 =begin
+cups = get_input(23).chomp.chars.map(&:to_i)
+min_cup = cups.min
+max_cup = cups.max
+(1_000_000 - cups.size).times do
+  max_cup += 1
+  cups << max_cup
+end
+10_000_000.times do |i|
+  picked_up = cups.slice!(1, 3)
+  dest = cups[0]
+  begin
+    dest = dest == min_cup ? max_cup : dest - 1
+  end while picked_up.include?(dest)
+
+  cups[cups.index(dest) + 1, 0] = picked_up
+
+  cups.rotate!(1)
+end
+cups.rotate!(cups.index(1))
+puts cups[1] * cups[2]
+=end
+
+=begin
 cups = Cups.new('389125467'.chars.map(&:to_i))
 10.times do |i|
   puts "-- move #{i + 1} --"
