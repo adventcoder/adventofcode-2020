@@ -5,10 +5,10 @@ input = get_input(6)
 
 sum1 = 0
 sum2 = 0
-for group in input.split("\n\n")
+for chunk in input.split("\n\n")
   any_answered = []
   all_answered = [*'a' .. 'z']
-  group.each_line do |line|
+  chunk.each_line do |line|
     answers = line.chomp.split('')
     any_answered |= answers
     all_answered &= answers
