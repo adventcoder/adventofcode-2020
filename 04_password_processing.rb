@@ -14,19 +14,17 @@ validators['pid'] = lambda { |v| v =~ /^[0-9]{9}$/ }
 
 count1 = 0
 count2 = 0
-passport = {}
-input.each_line do |line|
-  if line.strip.empty?
-    if validators.keys.all? { |k| passport.has_key?(k) }
-      count1 += 1
-      if validators.all? { |k, v| v.call(passport[k]) }
-        count2 += 1
-      end
-    end
-    passport = {}
-  else
+for chunk in input.split("\n\n")
+  passport = {}
+  chunk.each_line do |line|
     for token in line.split
       passport.store(*token.split(':'))
+    end
+  end
+  if validators.keys.all? { |field| passport.has_key?(field) }
+    count1 += 1
+    if validators.all? { |field, validator| validator.call(passport[field]) }
+      count2 += 1
     end
   end
 end

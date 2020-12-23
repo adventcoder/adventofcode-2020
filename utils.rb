@@ -125,9 +125,8 @@ class PriorityQueue
   end
 
   def pop
-    if @heap.empty?
-      nil
-    elsif @heap.size == 1
+    return nil if @heap.empty?
+    if @heap.size == 1
       @heap.pop[0]
     else
       pair = @heap[0]
@@ -169,10 +168,10 @@ class PriorityQueue
       index = min_child_index
     end
     if left_child(index) < @heap.size
-      min_child_index = left_child(index)
-      return if @heap[index][1] <= @heap[min_child_index][1]
-      @heap.swap(index, min_child_index)
-      index = min_child_index
+      child_index = left_child(index)
+      return if @heap[index][1] <= @heap[child_index][1]
+      @heap.swap(index, child_index)
+      index = child_index
     end
   end
 
