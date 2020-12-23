@@ -7,23 +7,11 @@ input = get_input(11)
 class Simulation
   def initialize(input)
     @grid = input.lines.map(&:chomp)
-    @active = Set.new(occupied + unoccupied)
+    @active = Set.new(find('#L'))
   end
 
-  def occupied
-    @grid.flat_map.with_index do |row, y|
-      row.chars.filter_map.with_index do |c, x|
-        [x, y] if c == '#'
-      end
-    end
-  end
-
-  def unoccupied
-    @grid.flat_map.with_index do |row, y|
-      row.chars.filter_map.with_index do |c, x|
-        [x, y] if c == 'L'
-      end
-    end
+  def find(options)
+    @grid.flat_map.with_index { |row, y| row.chars.filter_map.with_index { |c, x| [x, y] if options.include?(c) } }
   end
 
   def in_bounds?(x, y)
@@ -86,8 +74,8 @@ input = get_input(11)
 
 sim = Simulation.new(input)
 sim.tick while sim.active?
-puts sim.occupied.size
+puts sim.find('#').size
 
 sim2 = Simulation2.new(input)
 sim2.tick while sim2.active?
-puts sim2.occupied.size
+puts sim2.find('#').size

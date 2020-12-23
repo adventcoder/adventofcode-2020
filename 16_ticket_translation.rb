@@ -38,14 +38,10 @@ end
 
 fields = []
 until options.empty?
-  options.each_key do |field|
-    if options[field].size == 1
-      index = options[field].first
-      fields[index] = field
-      options.delete(field)
-      options.each_value { |opts| opts.delete(index) }
-    end
-  end
+  field = options.each_key.find { |field| options[field].size == 1 }
+  index = options.delete(field).first
+  fields[index] = field
+  options.each_value { |indices| indices.delete(index) }
 end
 
 puts fields.zip(my_ticket).prod { |field, value| field.start_with?('departure') ? value : 1 }

@@ -34,8 +34,7 @@ def part2(input)
       value = $2.to_i
       addr |= or_mask
       for floating_bits in 0 ... (1 << floating_indexes.size)
-        addr = set_bits(addr, floating_bits, floating_indexes)
-        mem[addr] = value
+        mem[set_bits(addr, floating_bits, floating_indexes)] = value
       end
     end
   end
