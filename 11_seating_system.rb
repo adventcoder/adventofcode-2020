@@ -4,69 +4,90 @@ require 'set'
 
 input = get_input(11)
 
-DIR8 = [*-1 .. 1].product([*-1 .. 1]).select { |(x, y)| [x.abs, y.abs].max == 1 }
-
-def all_seats(state)
-  state.flat_map.with_index { |row, y| row.chars.filter_map.with_index { |c, x| [x, y] unless c == '.' } }
-end
-
-def count_occupied_seats(state)
-  state.sum { |row| row.count('#') }
-end
-
-def seat_occupied?(state, x, y)
-  return false unless y.between?(0, state.size - 1) && x.between?(0, state[y].size - 1)
-  state[y][x] == '#'
-end
-
-def seat_occupied_in_direction?(state, x, y, dx, dy)
-  loop do
-    x += dx
-    y += dy
-    return false unless y.between?(0, state.size - 1) && x.between?(0, state[y].size - 1)
-    return state[y][x] == '#' unless state[y][x] == '.'
+class Simulation
+  def initialize(input)
+    @grid = input.lines.map(&:chomp)
+    @active = Set.new(occupied + unoccupied)
   end
-end
 
-def simulate1(state)
-  active = Set.new(all_seats(state))
-  until active.empty?
-    next_state = state.map(&:dup)
-    active.each do |x, y|
-      occupied = DIR8.count { |dx, dy| seat_occupied?(state, x + dx, y + dy) }
-      if state[y][x] == 'L' && occupied == 0
-        next_state[y][x] = '#'
-      elsif state[y][x] == '#' && occupied >= 4
-        next_state[y][x] = 'L'
-      else
-        active.delete([x, y])
+  def occupied
+    @grid.flat_map.with_index do |row, y|
+      row.chars.filter_map.with_index do |c, x|
+        [x, y] if c == '#'
       end
     end
-    state = next_state
   end
-  state
-end
 
-def simulate2(state)
-  active = Set.new(all_seats(state))
-  state = state.map(&:dup)
-  until active.empty?
-    next_state = state.map(&:dup)
-    active.each do |x, y|
-      occupied = DIR8.count { |dx, dy| seat_occupied_in_direction?(state, x, y, dx, dy) }
-      if state[y][x] == 'L' && occupied == 0
-        next_state[y][x] = '#'
-      elsif state[y][x] == '#' && occupied >= 5
-        next_state[y][x] = 'L'
-      else
-        active.delete([x, y])
+  def unoccupied
+    @grid.flat_map.with_index do |row, y|
+      row.chars.filter_map.with_index do |c, x|
+        [x, y] if c == 'L'
       end
     end
-    state = next_state
   end
-  state
+
+  def in_bounds?(x, y)
+    y.between?(0, @grid.size - 1) && x.between?(0, @grid[y].size - 1)
+  end
+
+  def occupied?(x, y, dx, dy)
+    in_bounds?(x + dx, y + dy) && @grid[y + dy][x + dx] == '#'
+  end
+
+  def occupied_neighbours(x, y)
+    count = 0
+    for dy in -1 .. 1
+      for dx in -1 .. 1
+        next if dx == 0 && dy == 0
+        count += 1 if occupied?(x, y, dx, dy)
+      end
+    end
+    count
+  end
+
+  def max_occupied_neighbours
+    4
+  end
+
+  def active?
+    @active.size > 0
+  end
+
+  def tick
+    next_grid = @grid.map(&:dup)
+    @active.each do |x, y|
+      if @grid[y][x] == 'L' && occupied_neighbours(x, y) == 0
+        next_grid[y][x] = '#'
+      elsif @grid[y][x] == '#' && occupied_neighbours(x, y) >= max_occupied_neighbours
+        next_grid[y][x] = 'L'
+      else
+        @active.delete([x, y])
+      end
+    end
+    @grid = next_grid
+  end
 end
 
-initial_state = input.lines.map(&:chomp)
-puts count_occupied_seats(simulate1(initial_state))
-puts count_occupied_seats(simulate2(initial_state))
+class Simulation2 < Simulation
+  def occupied?(x, y, dx, dy)
+    begin
+      x += dx
+      y += dy
+    end while in_bounds?(x, y) && @grid[y][x] == '.'
+    in_bounds?(x, y) && @grid[y][x] == '#'
+  end
+
+  def max_occupied_neighbours
+    5
+  end
+end
+
+input = get_input(11)
+
+sim = Simulation.new(input)
+sim.tick while sim.active?
+puts sim.occupied.size
+
+sim2 = Simulation2.new(input)
+sim2.tick while sim2.active?
+puts sim2.occupied.size
