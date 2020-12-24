@@ -2,13 +2,15 @@ require_relative 'common'
 
 require 'set'
 
+# w = nwsw
+# e = nese
 DIRS = {
-  'nw' => [0, 1, -1],
-  'ne' => [1, 0, -1],
-  'w' => [-1, 1, 0],
-  'e' => [1, -1, 0],
-  'sw' => [-1, 0, 1],
-  'se' => [0, -1, 1]
+  'nw' => [-1, -1],
+  'ne' => [ 1, -1],
+  'sw' => [-1,  1],
+  'se' => [ 1,  1],
+  'w'  => [-2,  0],
+  'e'  => [ 2,  0]
 }
 
 input = get_input(24)
@@ -20,7 +22,7 @@ class Array
 end
 
 def identify(line)
-  pos = [0, 0, 0]
+  pos = [0, 0]
   i = 0
   while i < line.size
     for key, dir in DIRS
@@ -33,7 +35,6 @@ def identify(line)
   end
   pos
 end
-
 
 flipped = Set.new
 
@@ -57,7 +58,7 @@ puts flipped.size
   end
   next_flipped = Set.new
   for pos in flipped
-    next_flipped.add(pos) if counts[pos].between?(1, 2)
+    next_flipped << pos if counts[pos].between?(1, 2)
   end
   for pos, count in counts
     next if flipped.include?(pos)
