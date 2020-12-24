@@ -21,31 +21,24 @@ def parse(input, n)
 end
 
 def neighbours(pos)
-  return enum_for(:neighbours, pos) unless block_given?
   [*-1 .. 1].repeated_permutation(pos.size) do |delta|
     yield Array.new(pos.size) { |i| pos[i] + delta[i] } unless delta.all?(&:zero?)
   end
 end
 
 def tick(hypercube, n)
-  result = Set.new
-  boundary = Set.new
+  counts = Hash.new(0)
   hypercube.each do |pos|
-    count = 0
     neighbours(pos) do |neigh|
-      if hypercube.include?(neigh)
-        count += 1
-      else
-        boundary.add(neigh)
-      end
+      counts[neigh] += 1
     end
-    result.add(pos) if count.between?(2, 3) # stay active
   end
-  boundary.each do |pos|
-    count = 0
-    neighbours(pos) do |neigh|
-      count += 1 if hypercube.include?(neigh)
-    end
+  result = Set.new
+  for pos in hypercube
+    result.add(pos) if counts[pos].between?(2, 3) # stay active
+  end
+  for pos, count in counts
+    next if hypercube.include?(pos)
     result.add(pos) if count == 3 # become active
   end
   result
