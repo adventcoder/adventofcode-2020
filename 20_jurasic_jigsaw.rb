@@ -1,137 +1,162 @@
 require_relative 'common'
 
-class Tile
-  attr_reader :rows
+class Array
+  def left; map { |row| row[0] }.join; end
+  def right; map { |row| row[-1] }.join; end
+  def top; self[0]; end
+  def bottom; self[-1]; end
 
-  def initialize(rows)
-    @rows = rows
+  def sides
+    [left, right, top, bottom]
   end
 
-  def size
-    @rows.size
-  end
-
-  def [](x, y)
-    return nil if y >= @rows.size
-    @rows[y][x]
-  end
-
-  def top; @rows[0]; end
-  def bottom; @rows[-1]; end
-  def left; @rows.map { |row| row[0] }.join; end
-  def right; @rows.map { |row| row[-1] }.join; end
-
-  def each_orientation
-    return enum_for(:each_orientation) unless block_given?
-    tile = self
+  def orientations
+    orientations = []
+    orientation = self
     4.times do
-      yield tile
-      yield tile.flip
-      tile = tile.rotate
+      orientations << orientation
+      orientations << orientation.reverse
+      orientation = orientation.rotate
     end
-  end
-
-  def flip
-    Tile.new(@rows.reverse)
+    orientations
   end
 
   def rotate
-    Tile.new(Array.new(@rows.size) { |y|
-      Array.new(@rows.size) { |x|
-        @rows[x][@rows.size - 1 - y]
-      }.join
-    })
+    Array.new(self[0].size) do |x|
+      Array.new(size) { |y| self[size - 1 - y][x] }.join
+    end
   end
 
-  def to_s
-    @rows.join("\n")
+  def rotate!
+    replace(rotate)
   end
-end
 
-input = get_input(20)
-
-tiles = {}
-for part in input.split("\n\n")
-  id = part.lines.first[/\d+/].to_i
-  rows = part.lines.drop(1).map(&:chomp)
-  tiles[id] = Tile.new(rows)
-end
-
-orientations = {}
-tiles.each do |id, tile|
-  tile.each_orientation.with_index do |orientation, i|
-    orientations[[id, i]] = orientation
+  def reverse_rows!
+    each { |row| row.reverse! }
   end
-end
 
-left = {}
-right = {}
-top = {}
-bottom = {}
-# Could do half as many iterations here since relation is symmetric but who cares.
-orientations.each do |i, a|
-  orientations.each do |j, b|
-    next if i[0] == j[0]
-    left[i] = j if a.left == b.right
-    right[i] = j if a.right == b.left
-    top[i] = j if a.top == b.bottom
-    bottom[i] = j if a.bottom == b.top
-  end
-end
-
-corners = orientations.keys.select { |i| top[i] == nil && left[i] == nil }
-puts corners.map { |(id, i)| id }.uniq.prod
-
-size = Math.sqrt(tiles.size).to_i
-grid = Array.new(size) { Array.new(size) }
-grid[0][0] = corners[0]
-for x in 1 ... size
-  grid[0][x] = right[grid[0][x - 1]]
-end
-for x in 0 ... size
-  for y in 1 ... size
-    grid[y][x] = bottom[grid[y - 1][x]]
-  end
-end
-
-tile_size = orientations[grid[0][0]].size - 2
-rows = Array.new(tile_size * size) { " " * (tile_size * size) }
-for y in 0 ... size
-  for x in 0 ... size
-    for tile_y in 0 ... tile_size
-      for tile_x in 0 ... tile_size
-        rows[y * tile_size + tile_y][x * tile_size + tile_x] = orientations[grid[y][x]][tile_x + 1, tile_y + 1]
+  def detect_monster(monster)
+    for y in 0 ... size - monster.size
+      for x in 0 ... self[0].size - monster[0].size
+        if monster_at?(x, y, monster)
+          for monster_y in 0 ... monster.size
+            for monster_x in 0 ... monster[monster_y].size
+              self[y + monster_y][x + monster_x] = 'O' if monster[monster_y][monster_x] == '#'
+            end
+          end
+        end
       end
     end
   end
-end
-mega_tile = Tile.new(rows)
 
-monster = [
-  '                  # ',
-  '#    ##    ##    ###',
-  ' #  #  #  #  #  #   '
-]
-monster_deltas = []
-for y in 0 ... monster.size
-  for x in 0 ... monster[y].size
-    if monster[y][x] == '#'
-      monster_deltas << [x, y]
+  def monster_at?(x, y, monster)
+    for monster_y in 0 ... monster.size
+      for monster_x in 0 ... monster[monster_y].size
+        return false if monster[monster_y][monster_x] == '#' && self[y + monster_y][x + monster_x] != '#'
+      end
     end
+    true
   end
 end
 
-mega_tile.each_orientation do |orientation|
-  monster_count = 0
-  wave_count = 0
-  for y in 0 ... orientation.size
-    for x in 0 ... orientation.size
-      wave_count += 1 if mega_tile[x, y] == '#'
-      monster_count += 1 if monster_deltas.all? { |(dx, dy)| orientation[x + dx, y + dy] == '#' }
+class Jigsaw
+  def initialize(input)
+    @tiles = {}
+    for chunk in input.split("\n\n")
+      id = chunk.lines.first[/\d+/].to_i
+      tile = chunk.lines.drop(1).map(&:chomp)
+      @tiles[id] = tile
+    end
+
+    @edges = Hash.new { |h, k| h[k] = [] }
+    for id, tile in @tiles
+      @edges[tile.left] << id
+      @edges[tile.right] << id
+      @edges[tile.top] << id
+      @edges[tile.bottom] << id
+      @edges[tile.left.reverse] << id
+      @edges[tile.right.reverse] << id
+      @edges[tile.top.reverse] << id
+      @edges[tile.bottom.reverse] << id
+    end
+
+    size = Math.sqrt(@tiles.size)
+    @grid = Array.new(size) { Array.new(size) }
+  end
+
+  def border?(side)
+    @edges[side].size == 1
+  end
+
+  def corner?(id)
+    @tiles[id].sides.count { |side| border?(side) } == 2
+  end
+
+  def corners
+    @tiles.keys.select { |id| corner?(id) }
+  end
+
+  def bottom(id)
+    (@edges[@tiles[id].bottom] - [id]).first
+  end
+
+  def right(id)
+    (@edges[@tiles[id].right] - [id]).first
+  end
+
+  def tile(x, y)
+    @tiles[@grid[y][x]]
+  end
+
+  def assemble
+    @grid[0][0] = corners.first
+    tile(0, 0).rotate! until border?(tile(0, 0).left) && border?(tile(0, 0).top)
+
+    for y in 1 ... @grid.size
+      @grid[y][0] = bottom(@grid[y - 1][0])
+      tile(0, y).rotate! until tile(0, y).top == tile(0, y - 1).bottom || tile(0, y).top.reverse == tile(0, y - 1).bottom
+      tile(0, y).reverse_rows! unless tile(0, y).top == tile(0, y - 1).bottom
+    end
+
+    for y in 0 ... @grid.size
+      for x in 1 ... @grid[y].size
+        @grid[y][x] = right(@grid[y][x - 1])
+        tile(x, y).rotate! until tile(x, y).left == tile(x - 1, y).right || tile(x, y).left.reverse == tile(x - 1, y).right
+        tile(x, y).reverse! unless tile(x, y).left == tile(x - 1, y).right
+      end
     end
   end
-  if monster_count > 0
-    puts wave_count - monster_count * monster_deltas.size
-    break
+
+  def to_a
+    tile_size = 8
+    rows = Array.new(@grid.size * tile_size) { |y| ' ' * (@grid[y / tile_size].size * tile_size) }
+    for y in 0 ... @grid.size
+      for x in 0 ... @grid[y].size
+        next if @grid[y][x] == nil
+        for tile_y in 0 ... tile_size
+          for tile_x in 0 ... tile_size
+            rows[y * tile_size + tile_y][x * tile_size + tile_x] = @tiles[@grid[y][x]][tile_y + 1][tile_x + 1]
+          end
+        end
+      end
+    end
+    rows
   end
 end
+
+jigsaw = Jigsaw.new(get_input(20))
+puts jigsaw.corners.prod
+
+jigsaw.assemble
+image = jigsaw.to_a
+
+monster = <<-EOS.lines.map(&:chomp)
+                  # 
+#    ##    ##    ###
+ #  #  #  #  #  #   
+EOS
+
+for orientation in monster.orientations
+  image.detect_monster(orientation)
+end
+puts image.sum { |row| row.count('#') }
