@@ -55,12 +55,6 @@ class Array
   def bsearch_index(target, first = 0, last = size)
     (first ... last).bsearch(target) { |i| self[i] }
   end
-
-  def swap(i, j)
-    temp = self[i]
-    self[i] = self[j]
-    self[j] = temp
-  end
 end
 
 class Integer
@@ -69,121 +63,77 @@ class Integer
   end
 end
 
-class DisjointSet
-  attr_reader :size
-
-  def initialize(size)
-    @parent = Array.new(size) { |i| i }
-    @height = Array.new(size, 1)
-    @size = size
+class Heap
+  def self.[](*values)
+    new(values)
   end
 
-  def find(i)
-    root = i
-    until @parent[root] == root
-      root = @parent[root]
+  def initialize(values = [], &block)
+    @values = values
+    @block = block
+    if @values.size > 1
+      parent(@values.size - 1).downto(0) do |i|
+        heapify_down(i)
+      end
     end
-    until @parent[i] == root
-      i, @parent[i] = @parent[i], root
-    end
-    root
   end
 
-  def merge(i, j)
-    i = find(i)
-    j = find(j)
-    return if i == j
-    if @height[i] < @height[j]
-      @parent[i] = j
-    elsif @height[j] < @height[i]
-      @parent[j] = i
-    else
-      @parent[i] = j
-      @height[j] += 1
-    end
-    @size -= 1
-  end
-end
+  def empty?; @values.empty?; end
+  def size; @values.size; end
 
-class PriorityQueue
-  def initialize
-    @heap = []
-  end
-
-  def empty?
-    @heap.empty?
-  end
-
-  def size
-    @heap.size
-  end
-
-  def push(value, priority)
-    @heap << [value, priority]
-    heapify_up(@heap.size - 1)
-    self
+  def peek
+    @values[0]
   end
 
   def pop
-    return nil if @heap.empty?
-    if @heap.size == 1
-      @heap.pop[0]
-    else
-      pair = @heap[0]
-      @heap[0] = @heap.pop
-      heapify_down(0)
-      pair[0]
+    return @values.pop if @values.size <= 1
+    value = @values[0]
+    @values[0] = @values.pop
+    heapify_down(0)
+    value
+  end
+
+  def <<(value)
+    @values << value
+    heapify_up(@values.size - 1)
+    self
+  end
+
+  def heapify_up(i)
+    value = @values[i]
+    while i > 0
+      p = parent(i)
+      break if compare(value, @values[p]) >= 0
+      @values[i] = @values[p]
+      i = p
     end
+    @values[i] = value
   end
 
-  def set_priority(value, priority)
-    index = @heap.index { |pair| pair[0].eql?(value) }
-    return if index == nil
-    old_priority = @heap[index][1]
-    @heap[index][1] = priority
-    if priority > old_priority
-      heapify_down(index)
-    elsif priority < old_priority
-      heapify_up(index)
+  def heapify_down(i)
+    value = @values[i]
+    loop do
+      l = left_child(i)
+      break unless l < @values.size
+      r = right_child(i)
+      if r < @values.size && compare(@values[r], @values[l]) < 0
+        break if compare(value, @values[r]) <= 0
+        @values[i] = @values[r]
+        i = r
+      else
+        break if compare(value, @values[l]) <= 0
+        @values[i] = @values[l]
+        i = l
+      end
     end
+    @values[i] = value
   end
 
-  def heapify_up(index)
-    while index > 0
-      parent_index = parent(index)
-      break if @heap[index][1] >= @heap[parent_index][1]
-      temp = @heap[index]
-      @heap[index] = @heap[parent_index]
-      @heap[parent_index] = temp
-      index = parent_index
-    end
+  def compare(a, b)
+    @block.nil? ? a <=> b : @block.call(a, b)
   end
 
-  def heapify_down(index)
-    while right_child(index) < @heap.size
-      min_child_index = right_child(index)
-      min_child_index = left_child(index) if @heap[left_child(index)][1] < @heap[min_child_index][1]
-      return if @heap[index][1] <= @heap[min_child_index][1]
-      @heap.swap(index, min_child_index)
-      index = min_child_index
-    end
-    if left_child(index) < @heap.size
-      child_index = left_child(index)
-      return if @heap[index][1] <= @heap[child_index][1]
-      @heap.swap(index, child_index)
-      index = child_index
-    end
-  end
-
-  def parent(index)
-    (index - 1) / 2
-  end
-
-  def left_child(index)
-    2 * index + 1
-  end
-
-  def right_child(index)
-    2 * index + 2
-  end
+  def parent(i); (i - 1) / 2; end
+  def left_child(i); 2 * i + 1; end
+  def right_child(i); 2 * i + 2; end
 end

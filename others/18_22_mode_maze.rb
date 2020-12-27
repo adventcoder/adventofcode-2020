@@ -62,40 +62,21 @@ class Cave
 
   def rescue_time
     start = Rescue.new(0, 0, TORCH)
-    time = { start => 0 }
-    prev = { start => nil }
-    open = PriorityQueue.new
-    open.push(start, start.estimate_time_to_goal(self))
-    closed = {}
-    until open.empty?
-      state = open.pop
-      closed[state] = true
-
-      if state.goal?(self)
-        goal = state
-        # path = []
-        # until state == nil
-        #   path << state
-        #   state = prev[state]
-        # end
-        # path.reverse_each do |state|
-        #   gear_name = ['NEITHER', 'TORCH', 'CLIMBING GEAR'][state.gear]
-        #   puts "[#{state.x}, #{state.y}] #{gear_name} (#{time[state]} mins)"
-        # end
-        return time[goal]
-      end
-
+    time = Hash.new(Infinity)
+    time[start] = 0
+    seen = Hash.new(false)
+    queue = Heap.new { |a, b| a[1] <=> b[1] }
+    queue << [start, start.estimate_time_to_goal(self)]
+    until queue.empty?
+      state, _ = queue.pop
+      next if seen[state]
+      seen[state] = true
+      return time[state] if state.goal?(self)
       state.each_neighbour(self) do |neighbour, dt|
-        next if closed[neighbour]
-        old_time = time[neighbour]
         new_time = time[state] + dt
-        next if old_time != nil && old_time <= new_time
-        prev[neighbour] = state
-        time[neighbour] = new_time
-        if old_time == nil
-          open.push(neighbour, new_time + neighbour.estimate_time_to_goal(self))
-        else
-          open.set_priority(neighbour, new_time + neighbour.estimate_time_to_goal(self))
+        if new_time < time[neighbour]
+          time[neighbour] = new_time
+          queue << [neighbour, new_time]
         end
       end
     end

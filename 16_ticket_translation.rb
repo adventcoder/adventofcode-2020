@@ -29,11 +29,9 @@ def rule_check_all(tickets, i, rule)
   tickets.all? { |ticket| rule_check(ticket[i], rule) }
 end
 
-options = Hash.new { |h, k| h[k] = Set.new }
+options = {}
 rules.each do |field, rule|
-  for i in 0 ... my_ticket.size
-    options[field] << i if rule_check_all(nearby_tickets, i, rule)
-  end
+  options[field] = (0 ... my_ticket.size).select { |i| rule_check_all(nearby_tickets, i, rule) }
 end
 
 fields = []
