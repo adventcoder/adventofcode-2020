@@ -1,47 +1,52 @@
 require_relative 'common'
 
-class Array
-  def left; map { |row| row[0] }.join; end
-  def right; map { |row| row[-1] }.join; end
-  def top; self[0]; end
-  def bottom; self[-1]; end
-
-  def sides
-    [left, right, top, bottom]
-  end
-
-  def orientations
-    orientations = []
-    orientation = self
-    4.times do
-      orientations << orientation
-      orientations << orientation.reverse
-      orientation = orientation.rotate
+class Tile
+  def self.collapse(grid)
+    id = grid[0][0].id * grid[0][-1].id * grid[-1][0].id * grid[-1][-1].id
+    rows = grid.flat_map do |row|
+      row.map(&:center).transpose.map(&:join)
     end
-    orientations
+    new(id, rows)
   end
 
-  def rotate
-    Array.new(self[0].size) do |x|
-      Array.new(size) { |y| self[size - 1 - y][x] }.join
-    end
+  attr_reader :id, :rows
+
+  def initialize(id, rows)
+    @id = id
+    @rows = rows
   end
+
+  def to_s
+    ["Tile #{@id}:", *@rows].join("\n")
+  end
+
+  def top; @rows[0]; end
+  def bottom; @rows[-1]; end
+  def left; @rows.map { |row| row[0] }.join; end
+  def right; @rows.map { |row| row[-1] }.join; end
+  def sides; [top, bottom, left, right]; end
+  def center; @rows[1 .. -2].map { |row| row[1 .. -2] }; end
 
   def rotate!
-    replace(rotate)
+    @rows = Array.new(@rows[0].size) { |x| @rows.map { |row| row[-1 - x] }.join }
   end
 
-  def reverse_rows!
-    each { |row| row.reverse! }
+  def flip!
+    @rows.reverse!
   end
 
-  def detect_monster(monster)
-    for y in 0 ... size - monster.size
-      for x in 0 ... self[0].size - monster[0].size
-        if monster_at?(x, y, monster)
-          for monster_y in 0 ... monster.size
-            for monster_x in 0 ... monster[monster_y].size
-              self[y + monster_y][x + monster_x] = 'O' if monster[monster_y][monster_x] == '#'
+  def flip_rows!
+    @rows.each { |row| row.reverse! }
+  end
+
+  def scan!(pattern)
+    for y in 0 ... @rows.size - pattern.size + 1
+      for x in 0 ... @rows[0].size - pattern[0].size + 1
+        if match?(x, y, pattern)
+          for dy in 0 ... pattern.size
+            for dx in 0 ... pattern[dy].size
+              next if pattern[dy][dx] == ' '
+              @rows[y + dy][x + dx] = 'O'
             end
           end
         end
@@ -49,114 +54,104 @@ class Array
     end
   end
 
-  def monster_at?(x, y, monster)
-    for monster_y in 0 ... monster.size
-      for monster_x in 0 ... monster[monster_y].size
-        return false if monster[monster_y][monster_x] == '#' && self[y + monster_y][x + monster_x] != '#'
+  def match?(x, y, pattern)
+    for dy in 0 ... pattern.size
+      for dx in 0 ... pattern[0].size
+        next if pattern[dy][dx] == ' '
+        return false unless @rows[y + dy][x + dx] == pattern[dy][dx]
       end
     end
     true
   end
+
+  def count(c)
+    @rows.sum { |row| row.count(c) }
+  end
 end
 
-class Jigsaw
+class Tileset
   def initialize(input)
-    @tiles = {}
+    @tiles = []
     for chunk in input.split("\n\n")
-      id = chunk.lines.first[/\d+/].to_i
-      tile = chunk.lines.drop(1).map(&:chomp)
-      @tiles[id] = tile
+      rows = chunk.lines.map(&:chomp)
+      id = rows.shift[/\d+/].to_i
+      @tiles << Tile.new(id, rows)
     end
-
     @edges = Hash.new { |h, k| h[k] = [] }
-    for id, tile in @tiles
-      @edges[tile.left] << id
-      @edges[tile.right] << id
-      @edges[tile.top] << id
-      @edges[tile.bottom] << id
-      @edges[tile.left.reverse] << id
-      @edges[tile.right.reverse] << id
-      @edges[tile.top.reverse] << id
-      @edges[tile.bottom.reverse] << id
+    for tile in @tiles
+      for side in tile.sides
+        @edges[side] << tile
+        @edges[side.reverse] << tile
+      end
     end
-
-    size = Math.sqrt(@tiles.size)
-    @grid = Array.new(size) { Array.new(size) }
   end
 
   def border?(side)
     @edges[side].size == 1
   end
 
-  def corner?(id)
-    @tiles[id].sides.count { |side| border?(side) } == 2
+  def corner?(tile)
+    (border?(tile.top) || border?(tile.bottom)) && (border?(tile.left) || border?(tile.right))
   end
 
-  def corners
-    @tiles.keys.select { |id| corner?(id) }
-  end
-
-  def bottom(id)
-    (@edges[@tiles[id].bottom] - [id]).first
-  end
-
-  def right(id)
-    (@edges[@tiles[id].right] - [id]).first
-  end
-
-  def tile(x, y)
-    @tiles[@grid[y][x]]
-  end
-
-  def assemble
-    @grid[0][0] = corners.first
-    tile(0, 0).rotate! until border?(tile(0, 0).left) && border?(tile(0, 0).top)
-
-    for y in 1 ... @grid.size
-      @grid[y][0] = bottom(@grid[y - 1][0])
-      tile(0, y).rotate! until tile(0, y).top == tile(0, y - 1).bottom || tile(0, y).top.reverse == tile(0, y - 1).bottom
-      tile(0, y).reverse_rows! unless tile(0, y).top == tile(0, y - 1).bottom
-    end
-
-    for y in 0 ... @grid.size
-      for x in 1 ... @grid[y].size
-        @grid[y][x] = right(@grid[y][x - 1])
-        tile(x, y).rotate! until tile(x, y).left == tile(x - 1, y).right || tile(x, y).left.reverse == tile(x - 1, y).right
-        tile(x, y).reverse! unless tile(x, y).left == tile(x - 1, y).right
+  def find_top_left_corner
+    for tile in @tiles
+      if corner?(tile)
+        tile.rotate! until border?(tile.top) && border?(tile.left)
+        return tile
       end
     end
+    nil
   end
 
-  def to_a
-    tile_size = 8
-    rows = Array.new(@grid.size * tile_size) { |y| ' ' * (@grid[y / tile_size].size * tile_size) }
-    for y in 0 ... @grid.size
-      for x in 0 ... @grid[y].size
-        next if @grid[y][x] == nil
-        for tile_y in 0 ... tile_size
-          for tile_x in 0 ... tile_size
-            rows[y * tile_size + tile_y][x * tile_size + tile_x] = @tiles[@grid[y][x]][tile_y + 1][tile_x + 1]
-          end
-        end
+  def find_right_neighbour(left)
+    for tile in @edges[left.right]
+      next if tile.id == left.id
+      tile.rotate! until tile.left == left.right || tile.left == left.right.reverse
+      tile.flip! unless tile.left == left.right
+      return tile
+    end
+    nil
+  end
+
+  def find_bottom_neighbour(above)
+    for tile in @edges[above.bottom]
+      next if tile.id == above.id
+      tile.rotate! until tile.top == above.bottom || tile.top == above.bottom.reverse
+      tile.flip_rows! unless tile.top == above.bottom
+      return tile
+    end
+    nil
+  end
+
+  def arrange(width, height)
+    grid = Array.new(height) { Array.new(width) }
+    grid[0][0] = find_top_left_corner
+    for y in 1 ... height
+      grid[y][0] = find_bottom_neighbour(grid[y - 1][0])
+    end
+    for y in 0 ... height
+      for x in 1 ... width
+        grid[y][x] = find_right_neighbour(grid[y][x - 1])
       end
     end
-    rows
+    grid
   end
 end
 
-jigsaw = Jigsaw.new(get_input(20))
-puts jigsaw.corners.prod
-
-jigsaw.assemble
-image = jigsaw.to_a
-
+tileset = Tileset.new(get_input(20))
+image = Tile.collapse(tileset.arrange(12, 12))
 monster = <<-EOS.lines.map(&:chomp)
                   # 
 #    ##    ##    ###
  #  #  #  #  #  #   
 EOS
-
-for orientation in monster.orientations
-  image.detect_monster(orientation)
+2.times do
+  4.times do
+    image.scan!(monster)
+    image.rotate!
+  end
+  image.flip!
 end
-puts image.sum { |row| row.count('#') }
+puts image.id
+puts image.count('#')
